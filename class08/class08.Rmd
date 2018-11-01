@@ -1,0 +1,253 @@
+---
+#header of the file 
+title: "Class 8"
+date: 10/25/2018
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## K-means clustering
+
+Our first example with **kmeans()** function.
+
+```{r}
+# Example plot to see how Rmarkdown works
+# Shortcut for insert code chunks: option+command+i
+plot(1:10, typ = "l")
+```
+
+Back to kmeans
+```{r}
+# Generate some example data for clustering
+tmp <- c(rnorm(30,-3), rnorm(30,3))  # this is a vector, c is used to concatenate
+x <- cbind(x=tmp, y=rev(tmp))
+plot(x)
+```
+
+Use the kmeans() function setting k to 2 and nstart=20
+```{r}
+k <- kmeans(x, centers = 2, nstart = 20)
+```
+
+Inspect/print the results
+```{r}
+print(k)
+```
+
+Q. How many points are in each cluster?
+```{r}
+k$size
+```
+   - there are 30 points in each cluster
+
+Q. What ‘component’ of your result object details
+    - cluster size: `k$size`
+    - cluster assignment/membership: clustering vector 
+```{r}
+table(k$cluster)
+```
+    - cluster center: values in cluster means
+```{r}
+k$centers
+```
+    - Within cluster sum of squares by cluster: square distance to the center
+    
+Plot x colored by the kmeans cluster assignment and add cluster centers as blue points
+```{r}
+palette(c("blue", "black"))
+plot(x, col = k$cluster)
+points(k$centers, col = "red", pch = 20, cex = 3)
+```
+
+Q. Repeat for k=3, which has the lower tot.withinss?
+```{r}
+k3 <- kmeans(x, centers = 3, nstart = 20)
+k4 <- kmeans(x, centers = 4, nstart = 20)
+k10 <- kmeans(x, centers = 10, nstart = 20)
+k10$tot.withinss
+k4$tot.withinss
+k3$tot.withinss
+k$tot.withinss
+plot(c(k$tot.withinss, k3$tot.withinss, k4$tot.withinss, k10$tot.withinss))
+```
+ 
+  - k=3 has a lower tot.withinss (larger k will result lower tot.withinss)
+Major disadvantage is that we have to give a k value each time.       
+
+
+
+# Hierarchical clustering in R
+
+Let's try out the **hclust()** function for Hierarchical clustering in R. This function need a **distance matrix** as input.
+
+```{r}
+d <- dist(x)
+hc <- hclust(d)
+#this plots a dendrogram 
+plot(hc)
+# Draw a line on the dendrogram
+abline(h = 8, col = "red")
+# Cut the tree to yeild cluster membership vector
+cutree(hc, h = 8)  #cut by height
+cutree(hc, k = 2)  #cut by k groups
+```
+
+Using different hierarchical clustering methods
+```{r}
+hc.complete <- hclust(d, method="complete")
+hc.average <- hclust(d, method="average")
+hc.single <- hclust(d, method="single")
+```
+
+### A more real example of hierarchical clustering
+```{r}
+### Step 1. Generate some example data for clustering
+x <- rbind(
+matrix(rnorm(100, mean=0, sd = 0.3), ncol = 2), # c1
+matrix(rnorm(100, mean = 1, sd = 0.3), ncol = 2), # c2
+matrix(c(rnorm(50, mean = 1, sd = 0.3), # c3
+rnorm(50, mean = 0, sd = 0.3)), ncol = 2))
+colnames(x) <- c("x", "y")
+# Step 2. Plot the data without clustering
+plot(x)
+# Step 3. Generate colors for known clusters
+# (just so we can compare to hclust results)
+palette(c("red","blue","black"))
+col <- as.factor( rep(c("c1","c2","c3"), each=50) )
+plot(x, col=col, pch = 20)
+```
+
+Q. Use the dist(), hclust(), plot() and cutree() functions to return 2 and 3 clusters
+```{r}
+disX <- dist(x)
+hcx <- hclust(disX)
+plot(hcx)
+cluster2 <- cutree(hcx, k =2)  #return 2 clusters
+cluster3 <- cutree(hcx, k =3)  #return 3 clusters
+palette(c("red","blue", "yellow"))
+plot(x, col = cluster2, pch = 20)
+plot(x, col = cluster3, pch = 20)
+```
+
+Q. How does this compare to your known 'col' groups?
+```{r}
+table(cluster3, col)
+```
+                   
+                   
+
+# Using principal component analysis (PCA) in R   
+
+Generate a gene expression table 
+```{r}
+# Initialize a blank 100 row by 10 column matrix
+mydata <- matrix(nrow=100, ncol=10)
+# Lets label the rows gene1, gene2 etc. to gene100
+rownames(mydata) <- paste("gene", 1:100, sep="")
+# Lets label the first 5 columns from wt1 to wt5 and the last 5 fromko1 to ko5
+colnames(mydata) <- c( paste("wt", 1:5, sep=""),
+paste("ko", 1:5, sep="") )
+# Fill in some fake read counts
+for(i in 1:nrow(mydata)) {
+wt.values <- rpois(5, lambda=sample(x=10:1000, size=1))
+ko.values <- rpois(5, lambda=sample(x=10:1000, size=1))
+mydata[i,] <- c(wt.values, ko.values)
+}
+head(mydata)
+```
+
+Note the prcomp() function wants us to take the transposed data of our matrix with column and rows flipped 
+```{r}
+head(t(mydata))
+```
+
+Now let's try find structure in this data with **prcomp()**
+```{r}
+pca <- prcomp(t(mydata), scale = TRUE)
+#see what's returned by prcomp using attributes()
+attributes(pca)
+```
+
+Make a PC plot of PC1 vs PC2, using `$x` component of output (pca$x)
+```{r}
+plot(pca$x[,1], pca$x[,2])
+```
+
+
+
+Looking the variance from the original data that we are capturing
+```{r}
+#variance: squared stdev
+pca.var <- pca$sdev^2
+pca.var
+#getting the percentage variance 
+pca.var.per <- round(pca.var/sum(pca.var)*100,1)
+pca.var.per
+```
+
+Making the basic PCA plot more useful
+```{r}
+## A vector of colors for wt and ko samples
+colvec <- colnames(mydata)
+colvec[grep("wt", colvec)] <- "red"
+colvec[grep("ko", colvec)] <- "blue"
+plot(pca$x[,1], pca$x[,2], col=colvec, pch=16,
+xlab=paste0("PC1 (", pca.var.per[1], "%)"),
+ylab=paste0("PC2 (", pca.var.per[2], "%)"))
+```
+
+Making a "Scree-plot" 
+```{r}
+barplot(pca.var.per, main="Scree Plot",
+xlab="Principal Component", ylab="Percent Variation")
+```
+
+Looking at the loading scores
+```{r}
+# Lets focus on PC1 as it accounts for > 90% of variance
+loading_scores <- pca$rotation[,1]
+summary(loading_scores)
+# We are interested in the magnitudes of both plus and minus contributing genes
+gene_scores <- abs(loading_scores)
+# Sort by magnitudes from high to low
+gene_score_ranked <- sort(gene_scores, decreasing=TRUE)
+# Find the names of the top 5 genes
+top_5_genes <- names(gene_score_ranked[1:5])
+# Show the scores (with +/- sign)
+pca$rotation[top_5_genes,1]
+```
+
+# Try using what learned today to analyze UK food data
+First read the food data and its dimension
+```{r}
+x <- read.csv("UK_foods.csv")
+#reformat the row names
+rownames(x) <- x[,1]
+x <- x[,-1]
+head(x)
+#check the dimension of x 
+dim(x)
+```
+
+Read the whole data
+```{r}
+knitr::kable(x, caption="The full UK foods data table")
+```
+
+Plot a heatmap from this data set
+```{r}
+#par(mar=c(20, 4, 4, 2))
+heatmap(as.matrix(x))
+```
+
+#Functions covered today
+kmeans(x)
+hclust(dist(x))
+cutree(hc)
+prcomp(x, scale = TRUE)
+table()
+
+
