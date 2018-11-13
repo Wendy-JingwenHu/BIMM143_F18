@@ -1,0 +1,106 @@
+---
+title: "Class 11: Structural Bioinformatics"
+date: 11/6/2018
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#1.1 PDB Statistics
+
+Download PDB statictics as CSV file from  http://www.rcsb.org/stats/summary
+```{r}
+pdbstats <- read.csv("Data Export Summary.csv", row.names = 1)
+```
+
+lets look at the table
+```{r}
+library(knitr)
+kable(pdbstats)
+```
+
+Q1: Determine the percentage of structures solved by X-Ray and Electron Microscopy. What proportion of structures are protein?
+```{r}
+sumTotal <- sum(pdbstats$Total)
+percentage <- round(pdbstats$Total / sumTotal*100, 2)
+```
+
+A1: The percentage of structures solved by X-ray is `r percentage[1]`% and the perentage of structures solved by electron microscopy is `r percentage[3]`% in the protein database as `r Sys.Date()`
+
+adding the percentage of each method as a new column of the table 
+```{r}
+nstats <- pdbstats
+nstats$Percent <- percentage
+kable(nstats)
+```
+
+Calculate the proportion of protein entries
+```{r}
+protein <- sum(pdbstats$Proteins)
+proportionP <- round(protein / sumTotal*100, 2)
+```
+A2: The proportion of protein entries from the summary table is `r proportionP`%
+
+# Introduction to Bio3D
+
+Load the bio3d library
+```{r}
+library(bio3d)
+```
+
+read the pdb file 
+```{r}
+pdb <- read.pdb(file ="1hsg.pdb")
+attributes(pdb)
+```
+Q8. Use the Bio3D   function to write out a protein only PDB file for viewing in VMD. Also write out a second separate PDB file for the ligand with residue name MK1
+```{r}
+ligand.inds <- atom.select(pdb,"ligand", value = TRUE)
+write.pdb(pdb, "ligand.pdb", type = pdb$ligand.inds)
+```
+
+#Align multiple structures 
+```{r}
+#Download some example pdb files
+ids <- c("1TND_B","1AGR_A","1TAG_A","1GG2_A","1KJY_A","4G5Q_A")
+files <- get.pdb(ids, split = TRUE)
+```
+
+align these strucutures
+```{r}
+# Extract and align the chains we are interested in
+pdbs <- pdbaln(files, fit = TRUE)
+# Print to screen a summary of the 'pdbs' object
+pdbs
+```
+
+Do PCA analysis 
+```{r}
+# find invariant core
+core <- core.find(pdbs)
+# superimpose all structures to core
+pdbs$xyz = pdbfit(pdbs, core)
+# Perform PCA
+pc.xray <- pca(pdbs)
+plot(pc.xray)
+```
+
+Function rmsd() will calculate all pairwise RMSD values of the structural ensemble. 
+This facilitates clustering analysis based on the pairwise structural deviation:
+```{r}
+# Calculate RMSD
+rd <- rmsd(pdbs)
+# Structure-based clustering
+hc.rd <- hclust(dist(rd)) 
+grps.rd <- cutree(hc.rd, k=3)
+plot(pc.xray, 1:2, col="grey50", bg=grps.rd, pch=21, cex=1)
+```
+
+To visualize the major structural variations in the ensemble the function mktrj() can be used to generate a trajectory PDB file by interpolating along a give PC (eigenvector):
+```{r}
+# Visualize first principal component
+pc1 <- mktrj(pc.xray, pc=1, file="pc_1.pdb")
+```
+

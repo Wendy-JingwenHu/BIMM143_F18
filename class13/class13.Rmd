@@ -1,0 +1,32 @@
+---
+title: "Class13: Structural Bioinformatics II"
+date: 11/13/2018
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Section 1: Obtain and Inspect the HIV protein structure
+Now load the Bio3D package and use the get.pdb() function to download the "1hsg" PDB entry into your RStudio Project directory:
+```{r}
+library(bio3d)
+file.name <- get.pdb("1hsg")
+```
+
+Next use the read.pdb()function to read this PDB file into R so we can prepare it for further analysis.
+```{r}
+hiv <- read.pdb(file.name)
+hiv
+```
+
+## Separate protein and ligand from the initial pdb file
+We'll use `trim.pdb()`function to split our input structure into protein and ligand 
+```{r}
+prot <- trim.pdb(hiv, "protein")
+lig  <- trim.pdb(hiv, "ligand")
+write.pdb(prot, file="1hsg_protein.pdb")
+write.pdb(lig, file="1hsg_ligand.pdb")
+```
+
