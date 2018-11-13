@@ -30,3 +30,16 @@ write.pdb(prot, file="1hsg_protein.pdb")
 write.pdb(lig, file="1hsg_ligand.pdb")
 ```
 
+unix commands:
+ls for list files in the current directory
+ls ~ for list files in home directory
+mv for move files 
+
+# Section 2: Docking the ligand and inspect docking results
+Inspect the docking result
+```{r}
+library(bio3d)
+res <- read.pdb("all.pdbqt", multi=TRUE)
+write.pdb(res, "results.pdb")
+```
+
