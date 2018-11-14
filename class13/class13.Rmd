@@ -36,10 +36,40 @@ ls ~ for list files in home directory
 mv for move files 
 
 # Section 2: Docking the ligand and inspect docking results
-Inspect the docking result
+##Docking with vina
+`~/Downloads/autodock_vina_1_1_2_mac/bin/vina --config config.txt --log log.txt`
+##Read the docking result
+We got a file all.pdbqt and we want to read it as a pdb file 
 ```{r}
 library(bio3d)
-res <- read.pdb("all.pdbqt", multi=TRUE)
+res <- read.pdb("all.pdbqt", multi=TRUE) #this file has multiple files 
 write.pdb(res, "results.pdb")
+res
+```
+
+To assess the results quantitatively we will calculate the RMSD (root mean square distance) between each of the docking results and the known crystal structure using the bio3d package.
+
+Back in RStudio read the original ligand with added hydrogens that you produced earlier and use the rmsd() function to compare to your docking results.
+```{r}
+ori <- read.pdb("ligand.pdbqt")
+rmsd(ori, res) # to quantify the distance between two molecules 
+```
+
+#Section 3: Exploring the conformational dynamics of proteins
+
+##3.1 Normal Mode Analysis (NMA)
+Normal mode analysis (NMA) of a single protein structure can be carried out by providing a PDB object to the function nma(). In the code below we first load the Bio3D package and then download an example structure of hen egg white lysozyme (PDB id 1hel) with the function read.pdb(). Finally the function nma() is used perform the normal mode calculation:
+```{r}
+library(bio3d)
+pdb <- read.pdb("1HEL")
+modes <- nma(pdb) 
+plot(modes, sse=pdb) 
+#the high values in fluctuation plot indicates the binding sites for drug
+```
+
+To visualize the normal mode predicted structural variations we can use the function mktrj() to generate a trajectory PDB file by interpolating along a given normal mode:
+```{r}
+# Visualize NMA results
+mktrj(modes, mode=7, file="nma_7.pdb")
 ```
 
