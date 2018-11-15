@@ -73,3 +73,4 @@ To visualize the normal mode predicted structural variations we can use the func
 mktrj(modes, mode=7, file="nma_7.pdb")
 ```
 
+![]("movie_of_protein.gif")
