@@ -29,3 +29,16 @@ phred <- asc( s2c("DDDDCDEDCDDDDBBDDDCC@") ) - 33
 phred
 ```
 
+#Population genetics analysis on SNP
+```{r}
+expression <- read.table("https://bioboot.github.io/bimm143_F18/class-material/rs8067378_ENSG00000172057.6.txt")
+inds.aa <- expression$geno == "A/A"
+summary(expression$exp[inds.aa])
+inds.ag <- expression$geno == "A/G"
+summary(expression$exp[inds.ag])
+inds.gg <- expression$geno == "G/G"
+summary(expression$exp[inds.gg])
+boxplot(exp ~ geno, data = expression)
+```
+
+Start from fastq file (the input), do quality control (FASTQC), alignment (mapping) using TopHat, then do Cufflink to count the entries, get the table in R, make a boxplot to show the gene expression is different 
