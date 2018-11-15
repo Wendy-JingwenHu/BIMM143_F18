@@ -1,0 +1,31 @@
+---
+title: "Class 14: Genomic Analysis"
+date: 11/15/2018
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Asthma SNPs
+##Examine the asthma SNPs in the MXL data
+```{r}
+SNP <- read.csv("373531-SampleGenotypes-Homo_sapiens_Variation_Sample_rs8067378.csv")
+```
+
+Lets focus on the second column of the genotype info to see the percentage of each SNP
+```{r}
+genotypes <- round (table(SNP[,2])/nrow(SNP)*100, 2)
+```
+
+There are `r genotypes[1]`% AA genotypes in the MXL population
+
+### Interpret base qualities in R
+```{r}
+library(seqinr)
+library(gtools)
+phred <- asc( s2c("DDDDCDEDCDDDDBBDDDCC@") ) - 33
+phred
+```
+
