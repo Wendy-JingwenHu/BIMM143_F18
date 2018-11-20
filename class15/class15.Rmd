@@ -1,0 +1,192 @@
+---
+title: "Class 15: Genome Informatics II"
+date: 11/20/2018
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# RNA-Seq analysis
+
+First step is to read our countData and colData (metadata) that we are going to use with DESeq.
+
+```{r}
+counts <- read.csv("data/airway_scaledcounts.csv", stringsAsFactors = FALSE)
+metadata <-  read.csv("data/airway_metadata.csv", stringsAsFactors = FALSE)
+```
+
+Lets examine the metadata file to find **control** and **treated** columns (cell lines)
+
+```{r}
+control.inds <- metadata$dex == "control"
+control <- metadata[control.inds, ]
+
+```
+
+Accessing columns of read and count data only for control 
+```{r}
+control.mean <- rowSums(counts[ ,control$id])/nrow(control)  
+names(control.mean) <- counts$ensgene
+```
+
+Do the same for the treated columns 
+```{r}
+treated.inds <- metadata$dex == "treated"
+treated <- metadata[treated.inds, ]
+treated.mean <- rowSums(counts[ ,treated$id])/nrow(treated)  
+names(treated.mean) <- counts$ensgene
+```
+
+We will combine our meancount data for bookkeeping purposes.
+```{r}
+meancounts <- data.frame(control.mean, treated.mean)
+colSums(meancounts)
+```
+
+Lets plot our data
+```{r}
+#plot control.mean vs. treated.mean 
+plot(meancounts$control.mean, meancounts$treated.mean)
+```
+
+Make plot with log transformation
+```{r}
+plot(meancounts$control.mean, meancounts$treated.mean, log = "xy" )
+```
+
+## Log2 Fold Change
+
+Here we calculate log2foldchange, add it to our meancounts data.frame and inspect the results either with the head() or the View() function for example.
+
+```{r}
+meancounts$log2fc <- log2(meancounts[,"treated.mean"]/meancounts[,"control.mean"])
+head(meancounts)
+```
+
+## Filter genes with zero expression
+
+The NaN is returned when you divide by zero and try to take the log. The -Inf is returned when you try to take the log of zero. 
+It turns out that there are a lot of genes with zero expression. Let’s filter our data to remove these genes.
+
+```{r}
+#looking at the data in meancounts to find zero values
+#meancounts[,1:2]==0 tells which expression is zero by returing TRUE/FALSE
+#which() returns the TRUE expressions
+##arr.ind = TRUE returns the role and columns of a expression
+zero.vals <- which(meancounts[,1:2]==0, arr.ind=TRUE)
+to.rm <- unique(zero.vals[,1])
+mycounts <- meancounts[-to.rm,]
+head(mycounts)
+```
+
+A common threshold used for calling something differentially expressed is a log2(FoldChange) of greater than 2 or less than -2. Let’s filter the dataset both ways to see how many genes are up or down-regulated.
+
+```{r}
+up.ind <- mycounts$log2fc > 2
+down.ind <- mycounts$log2fc < (-2)
+```
+
+Number of genes "up" and "down"
+
+```{r}
+sum(up.ind)
+sum(down.ind)
+```
+
+## Annotate our genes
+
+Add annotation data so we know what genes we have and their functions
+
+```{r}
+anno <- read.csv("data/annotables_grch38.csv")
+head(anno)
+```
+
+Ideally we want this annotation data mapped (or merged) with our mycounts data. In a previous class on writing R functions we introduced the **merge()** function, which is one common way to do this.
+
+```{r}
+mycounts.anno <- merge(mycounts, anno, by.x = "row.names", by.y = "ensgene")
+head(mycounts.anno)
+```
+
+Bioconductor’s annotation packages help with mapping various ID schemes to each other. Here we load the AnnotationDbi package and the annotation package org.Hs.eg.db.
+
+What is available in humand annotation data set
+
+```{r}
+library("AnnotationDbi")
+library("org.Hs.eg.db")
+```
+
+```{r}
+columns(org.Hs.eg.db)
+```
+
+We can use the mapIds() function to add individual columns to our results table. We provide the row names of our results table as a key, and specify that keytype=ENSEMBL. The column argument tells the mapIds() function which information we want, and the multiVals argument tells the function what to do if there are multiple possible values for a single input value. Here we ask to just give us back the first one that occurs in the database.
+
+```{r}
+mycounts$symbol <- mapIds(org.Hs.eg.db,
+                     keys=row.names(mycounts),
+                     column="SYMBOL",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+head(mycounts)
+```
+
+Add entrez ID column
+```{r}
+mycounts$entrez <- mapIds(org.Hs.eg.db,
+                     keys=row.names(mycounts),
+                     column="ENTREZID",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+head(mycounts)
+```
+
+Add uniprot column
+```{r}
+mycounts$uniprot <- mapIds(org.Hs.eg.db,
+                     keys=row.names(mycounts),
+                     column="UNIPROT",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+head(mycounts)
+```
+
+Examine the annotated data frame
+
+```{r}
+head(mycounts[up.ind, ])
+```
+
+
+# DESeq2 analysis
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
