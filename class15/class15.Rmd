@@ -164,16 +164,94 @@ head(mycounts[up.ind, ])
 
 # DESeq2 analysis
 
+```{r}
+library(DESeq2)
+citation("DESeq2")
+```
+
+Setting up the dataset
+```{r}
+dds <- DESeqDataSetFromMatrix(countData=counts, 
+                              colData=metadata, 
+                              design=~dex, 
+                              tidy=TRUE)
+dds
+```
+
+run the DESeq function
+```{r}
+dds <- DESeq(dds)
+res <- results(dds)
+res
+```
+
+Print a summary of our DESeq data
+```{r}
+summary(res)
+```
+
+The results function contains a number of arguments to customize the results table. By default the argument alpha is set to 0.1. If the adjusted p value cutoff will be a value other than 0.1, alpha should be set to that value:
+
+```{r}
+res01 <- results(dds, alpha=0.01)
+summary(res01)
+```
+
+Add annotations to our `res01` data
+```{r}
+res01$symbol <- mapIds(org.Hs.eg.db,
+                     keys=row.names(res01),
+                     column="SYMBOL",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+head(res01)
+```
+
+Save results to csv file
+```{r}
+write.csv(res01, "signif01_results.csv")
+```
 
 
+# Data Visualization
 
+Let’s first see what the gene ID is for the **CRISPLD2** gene using:
 
+```{r}
+#grep find the gene "CRISPLD2" in res01$symbol column 
+i <- grep("CRISPLD2", res01$symbol)
+res01[i,]
+```
 
+Now, with that gene ID in hand let’s plot the counts, where our intgroup, or “interesting group” variable is the “dex” column.
+Use the **plotCounts()** function in DESeq2 package.
 
+```{r}
+d <- plotCounts(dds, gene="ENSG00000103196", intgroup="dex", returnData = TRUE)
+```
 
+Make a boxplot 
+```{r}
+boxplot(count ~ dex, d)
+```
 
+## Volcano Plots 
+Let’s make another commonly produced visualization from this data. First, let’s add a column called sig to our full res results that evaluates to TRUE if padj<0.05, and FALSE if not, and NA if padj is also NA.
+```{r}
+plot(res01$log2FoldChange, -log(res01$padj))
+```
 
+Make a colored version of the plot highlighting genes with high fold change and small p- values.
 
+```{r}
+#make things all black
+myCols <- rep("black", nrow(res01))
+#put the extreme values red
+myCols[abs (res01$log2FoldChange) > 2] <- "red" 
+inds <- (res01$padj< 0.01) & (abs (res01$log2FoldChange) > 2)
+myCols[inds] <- "blue"
+plot(res01$log2FoldChange, -log(res01$padj), col = myCols)
+```
 
 
 
