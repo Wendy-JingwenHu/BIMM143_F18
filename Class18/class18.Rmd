@@ -1,0 +1,189 @@
+---
+title: "Class 18: Cancer Genomics"
+date: 11//29/2018
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Part 1: The GenomicDataCommons R package
+load the packages
+```{r message=FALSE, warning=FALSE}
+library(GenomicDataCommons)
+library(maftools)
+```
+
+Now lets check on GDC status:
+```{r}
+GenomicDataCommons::status()
+```
+
+
+# Querying the GDC from R
+
+The are four main sets of metadata that we can query with this package, namely **cases()**, **projects()**, **files()**, and **annotations()**.
+
+We will start with **cases()** and use an example from the package associated publication to answer our first question above (i.e. find the number of cases/patients across different projects within the GDC):
+
+```{r}
+cases_by_project <- cases() %>%
+  facet("project.project_id") %>%
+  aggregations()
+head(cases_by_project)
+```
+
+Make a barplot for those data:
+
+```{r}
+x <- cases_by_project$project.project_id
+
+# Make a custom color vector for our plot
+colvec <- rep("lightblue", nrow(x))
+colvec[x$key == "TCGA-PAAD"] <- "red"  #find the indice of PAAD entry
+
+# Plot with 'log' for y axis and rotate labels with 'las'
+par(mar=c(8,4,0,2)) #bottom, left,top, right margin
+barplot(x$doc_count, names.arg=x$key, log="y", col=colvec, las=2, ylim=c(1,20000))
+```
+
+Find gene expression files for PAAD
+```{r}
+## This code snipet is taken from the package vignette
+file_records <- files() %>%
+  filter(~ cases.project.project_id == "TCGA-PAAD" &
+    data_type == "Gene Expression Quantification" &
+    analysis.workflow_type == "HTSeq - Counts") %>%
+  response_all()
+head(file_records)
+```
+
+
+# Variant analysis with R
+
+```{r}
+maf.files = files() %>%
+    filter(~ cases.project.project_id == 'TCGA-PAAD' &
+        data_type == 'Masked Somatic Mutation' &
+        data_format == "MAF" &
+        analysis.workflow_type == "MuTect2 Variant Aggregation and Masking"
+    ) %>%
+    response_all()
+```
+
+```{r}
+attributes(maf.files)
+```
+
+```{r}
+head(maf.files)
+```
+
+Download the data
+
+```{r}
+# get the identifier of the file 
+uid <- ids(maf.files)
+
+#download the file
+maffile = gdcdata(uid)
+maffile
+```
+
+## MAF analysis 
+```{r}
+vars = read.maf(maf = maffile, verbose = FALSE)
+```
+
+```{r}
+plotmafSummary(maf =vars, rmOutlier = TRUE,
+               addStat = 'median', dashboard = TRUE,
+               titvRaw = FALSE)
+```
+
+
+# Drawing oncoplots
+
+```{r}
+oncoplot(maf = vars, top = 10)
+```
+
+```{r}
+# Oncoplot for our top 10 most frequently mutated genes
+pdf("oncoplot_panc.pdf")
+oncoplot(maf = vars, top = 10, fontSize = 12)
+dev.off()
+```
+
+```{r}
+pdf("oncostrip_panc.pdf")
+oncostrip(maf=vars, genes=c("KRAS", "TP53"))
+dev.off()
+```
+
+```{r}
+lollipopPlot(maf = vars, gene = 'KRAS', 
+                         showMutationRate = TRUE, domainLabelSize = 3)
+```
+
+
+
+# Part 2: Design cancer vaccines 
+
+```{r}
+library(bio3d)
+seqs<- read.fasta("lecture18_sequences.fa")
+seqs
+```
+
+```{r}
+score <- conserv(seqs, method="identity")
+mutant.inds <- which(score < 1)  #gives the places where the argument is true
+```
+
+```{r}
+# this gives the difference in alignment:tumor-specific mutations with gaps 
+seqs$ali[, mutant.inds] 
+```
+
+Find the gaps in the alignment
+```{r}
+#gap.inspect finds the gaps in the sequence alignment 
+gaps <- gap.inspect(seqs)
+#f.inds is the indices for non-gap containing columns 
+seqs$ali[, gaps$f.inds]
+```
+
+A**%in%**B find whether A is in B and returns TRUE/FALSE
+```{r}
+mutant.position <- mutant.inds[mutant.inds %in% gaps$f.inds]
+```
+
+We want the 8 before and 8 after position to get out sequences
+```{r}
+start.positon <- mutant.position - 8
+end.postion <- mutant.position + 8
+```
+
+```{r}
+start.positon
+```
+
+```{r}
+end.postion
+```
+
+```{r}
+seqs$ali[, start.positon[1]:end.postion[1]]
+```
+
+
+
+
+
+
+
+
+
+
